@@ -1,62 +1,61 @@
-# Project-Data-Warehouse
+# Project: Data Warehouse
 
-# Project description: 
+# Project Description
+The goal of the project is to extract data from AWS S3 to **Amazon Redshift** within two staging tables. From these staging tables, we create a set of fact and dimensional tables.
 
-The goal of the project is to extract the data from AWS S3 to Redshift within two staging tables, and from the two staging tables create a set of fact/dimensional tables.
+We know that every time a user of the music app plays a song, it is recorded in the JSON files within the folder `log_data` located in AWS S3 at `s3://udacity-dend/log_data`.
+We also know that the information related to each song available on the music app is stored in the JSON files within the folder `song_data` located in AWS S3 at `s3://udacity-dend/song_data/A/A/A`.
 
-We know that every time a user of the music app plays a song, it is recorded on the json files within the folder `log_data` located in AWS S3 at `s3://udacity-dend/log_data`.
-We also know that the information related to each song available on the music app is stored in the json files within the folder `song_data` located in AWS S3 at `s3://udacity-dend/song_data/A/A/A`.
+# Database Design
 
-# Database design: 
+- **The staging table `staging_songs`:** Each row holds information related to a JSON file located in `log_data` (AWS S3).
+- **The staging table `staging_events`:** Each row holds information related to a JSON file located in `song_data` (AWS S3).
 
-- **The staging table `staging_songs`:** each row holds the info relative to a json file located in `log_data` (located in AWS S3).
+![Star Schema](star_schema.png)
 
-- **The staging table `staging_events`:** each row holds the info relative to a json file located in `song_data` (located in AWS S3).
+- **The dimension table `songs`:** Holds information about songs available in the music app.
+  - **Sort Key:** `song_id`
+  - **Distribution:** `All`
 
-![This is an image](star_schema.png)
+- **The dimension table `artists`:** Holds information about artists who created songs available in the music app.
+  - **Sort Key:** `artist_id`
+  - **Distribution:** `All`
 
-- **The dimension table `songs`:** each row holds the info relative to a song available at the music app. PS: the column `song_id` is sortkey. The table is `Distribution all`.
+- **The dimension table `time`:** Holds timestamps related to when users played songs.
+  - **Sort Key:** `start_time`
+  - **Distribution:** `All`
 
-- **The dimension table `artists`:** each row holds the info relative to an artist who create a song available at the music app. PS: the column artist_id is sortkey. The table is `Distribution all`.
+- **The dimension table `users`:** Holds information about users who have played at least one song.
+  - **Sort Key:** `user_id`
+  - **Distribution:** `All`
 
-- **The dimension table `time`:** each row holds the info relative to the instance when an user of the app played a song. PS: the column `start_time` is sortkey. The table is `Distribution all`.
+- **The fact table `songplays`:** Holds records of song play events.
+  - **Sort Key & Dist Key:** `start_time`
 
-- **The dimension table `users`:** each row holds the info relative to an user of the app that has played at leat one or several songs. PS: the column `user_id` is sortkey. The table is `Distribution all`.
+# ETL Process
+The song-related information is stored in JSON files in the folder `song_data`. Each file corresponds to a specific song. The program extracts this information into the `songs` and `artists` tables.
 
-- **The dimension fact `songplays`:** each row holds the info relative to when a song is played. PS: the column `start_time` is sortkey and distkey. 
+Every time a user plays a song, it is recorded in the JSON files within `log_data`. Each file represents one day from **November 2018**. The program extracts this data and inserts it into the `time` and `users` tables.
 
+To populate the `songplays` table, the program joins `log_data` with the `songs` and `artists` tables to retrieve `song_id` and `artist_id`.
 
+# Project Repository Files
 
-# ETL Process: 
-The information related to each song available on the music app is stored in the json files within the folder `song_data`.
-Each file of `song_data` refers to one specific song.
-So the program will extract the information from the files to the table songs and artists. The code does basically a copy/paste.
+### **create_tables.py**
+- Connects to the **Redshift** cluster `redshift-cluster-1`.
+- Creates the empty staging tables: `staging_songs` and `staging_events`.
+- Creates the empty fact and dimension tables: `songs`, `artists`, `time`, `users`, and `songplays`.
 
-Every time an user of the music app plays a song, it is recorded on the json files within the folder `log_data`.
-Each file of `log_data` refers to one specific day from November 2018.
-So the program will extract the information from the files in `log_data` and will insert information in the `time and users` tables.
-So the program will extract the information from the files in `log_data` and will insert information in the `time` and `users` tables. The code does basically a copy/paste with an extra query to the tables time and users in order to get the `song_id and artist_id`. 
+### **etl.py**
+- Connects to the **Redshift** cluster `redshift-cluster-1`.
+- Loads data from JSON files in `song_data` into `staging_songs`.
+- Loads data from JSON files in `log_data` into `staging_events`.
+- Creates the fact and dimension tables from `staging_songs` and `staging_events`.
 
-# Project Repository files: 
-**create_tables.py:** 
-- Connect to the redshift cluster `redshift-cluster-1`
-- Creates the empty tables `staging_songs and staging_events`
-- Creates a set of empty fact/dimensional tables: `songs,artists,time,users,songplays`  
+### **sql_queries.py**
+- Contains all SQL queries used by `create_tables.py` and `etl.py`.
 
-**etl.py:** 
-- Connect to the redshift cluster `redshift-cluster-1`
-- For each json file of `song_data` we insert the content in `staging_songs`.
-- For each json file of `log_data` we insert the content in `staging_events`.
-- We create the set of fact/dimensional tables from `staging_songs and staging_events`.
-
-**sql_queries.py:**
-- contains all the query needed by `create_tables.py` and `etl.py`
-
-# How To Run the Project: This describes the steps to run the project
-- run `create_tables.py` 
-- run `etl.py`
-
-
-
-
-
+# How to Run the Project
+To execute the ETL process:
+1. Run `create_tables.py` to create the necessary tables.
+2. Run `etl.py` to extract, transform, and load the data into Redshift.
